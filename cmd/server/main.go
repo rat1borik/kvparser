@@ -35,6 +35,7 @@ func main() {
 
 	prg := &program{logger: logger, cfg: cfg}
 	s, err := service.New(prg, svcConfig)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,7 +52,8 @@ func main() {
 	// Запуск сервиса
 	err = s.Run()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("fatal: %s", err)
 		panic(err)
 	}
+
 }
