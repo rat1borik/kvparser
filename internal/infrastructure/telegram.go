@@ -21,6 +21,7 @@ func NewTgBot(token string, chatId int64) (Bot, error) {
 
 func (t *telegramBot) SendMessage(text string) error {
 	msg := tgbotapi.NewMessage(t.chatIdDefault, text)
+	msg.ParseMode = "HTML"
 	_, err := t.bot.Send(msg)
 	return err
 }

@@ -43,7 +43,13 @@ func (p *program) Start(s svc.Service) error {
 	rem := services.NewRemember[domain.DoctorMatch]()
 
 	sched := gocron.NewScheduler(time.UTC)
-	if err := jobs.RegisterFetchSlotsJob(sched, rem, "*/2 * * * *", p.logger, svc, domain.DoctorOptions{
+
+	cron := "*/2 * * * *"
+	if p.cfg.Cron != "" {
+		cron = p.cfg.Cron
+	}
+
+	if err := jobs.RegisterFetchSlotsJob(sched, rem, cron, p.logger, svc, domain.DoctorOptions{
 		Subdivision:  p.cfg.FilterOptions.Subdivision,
 		Specialists:  p.cfg.FilterOptions.Specialists,
 		Specialities: p.cfg.FilterOptions.Specialities,
