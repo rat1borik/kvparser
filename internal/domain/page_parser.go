@@ -39,10 +39,10 @@ func FindMatches(html string, options DoctorOptions) (*MatchResult, error) {
 
 		s.Children().Filter(".doc-row-ha").Each(func(i int, s1 *goquery.Selection) {
 			el := DoctorMatch{
-				Name:        s1.Find(".doc-name-mo > a").Text(),
-				Speciality:  s1.Find(".profile-mo").Text(),
-				Status:      s1.Find(".nearest-record-mo").Text(),
-				Subdivision: addr,
+				Name:        strings.TrimSpace(s1.Find(".doc-name-mo > a").Text()),
+				Speciality:  strings.TrimSpace(s1.Find(".profile-mo").Text()),
+				Status:      strings.TrimSpace(s1.Find(".nearest-record-mo").Text()),
+				Subdivision: strings.TrimSpace(addr),
 			}
 
 			// Фильтрация
