@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"kvparser/internal/config"
+	"kvparser/internal/domain"
 	"kvparser/internal/logger"
 	"kvparser/internal/services"
-	"log"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,29 +22,35 @@ func (p *program) Start(s svc.Service) error {
 	if p.cfg.IsProduction {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
-		log.Println("Starting in development mode")
-
+		p.logger.Info("Starting in development mode")
 	}
 
-	svc, err := services.NewChromeParser()
+	svc, err := services.NewChromeParser(p.logger)
 	if err != nil {
 		return err
 	}
 
 	p.parser = svc
 
-	content, err := svc.ParsePage("https://12341ya.r1234u")
+	res, err := svc.DoctorsSchedulePage()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(content)
+	parsed, err := domain.FindMatches(res, domain.DoctorOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, val := range parsed.Matches {
+		fmt.Printf("%s %s %s %s\n", val.Name, val.Speciality, val.Status, val.Subdivision)
+	}
 
 	return nil
 }
 
 func (p *program) Stop(s svc.Service) error {
-	log.Println("Stopping service...")
+	p.logger.Info("Stopping service...")
 	if p.parser != nil {
 		p.parser.Close()
 	}

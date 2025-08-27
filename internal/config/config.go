@@ -10,27 +10,7 @@ import (
 )
 
 type ServerConfig struct {
-	Server struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		ApiKey   string `yaml:"api_key"`
-		TLS      bool   `yaml:"tls"`
-		CertPath string `yaml:"cert_path"`
-		KeyPath  string `yaml:"key_path"`
-	} `yaml:"server"`
-	Vault struct {
-		Host string `yaml:"host"`
-		Port int    `yaml:"port"`
-	} `yaml:"vault"`
-	KSFilesPath string `yaml:"ks_files_path"`
-	TempPath    string `yaml:"temp_path"`
-	KSDatabase  struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		User     string `yaml:"user"`
-		Name     string `yaml:"name"`
-		Password string `yaml:"password"`
-	} `yaml:"ks_database"`
+	Cookie  string `yaml:"cookie"`
 	LogPath string `yaml:"log_path"`
 	// Берется из env
 	IsProduction bool

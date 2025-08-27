@@ -2,54 +2,62 @@ package services
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"kvparser/internal/config"
+	"kvparser/internal/logger"
 	"os"
+	"time"
 
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
 type ChromeParserService interface {
-	ParsePage(string) (string, error)
+	DoctorsSchedulePage() (string, error)
 	Close()
 }
 
 type chromeParserService struct {
+	cfg    config.ServerConfig
 	ctx    context.Context
 	cancel context.CancelFunc
+	logger logger.Logger
 }
 
 // Конструктор сервиса
-func NewChromeParser() (ChromeParserService, error) {
+func NewChromeParser(logger logger.Logger) (ChromeParserService, error) {
 	dir, err := os.MkdirTemp("", "chromedp-userdata")
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(err)
 	}
 
-	logger := func(format string, args ...interface{}) {
-		log.Printf(format, args...)
+	logFn := func(format string, args ...interface{}) {
+		logger.Info(fmt.Sprintf(format, args))
 	}
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:]) // chromedp.DisableGPU,
-	// chromedp.UserDataDir(dir),
-	// chromedp.Headless,
-	// chromedp.NoSandbox,
-	// chromedp.Flag("disable-dev-shm-usage", true),
-	// chromedp.Flag("disable-software-rasterizer", true),
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.DisableGPU,
+		chromedp.UserDataDir(dir),
+		chromedp.Headless,
+		chromedp.NoSandbox,
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("disable-software-rasterizer", true),
+	)
 
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
 
 	// Родительский контекст (без таймаута, сервис живёт долго)
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(logger))
+	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(logFn))
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch e := ev.(type) {
 		case *runtime.EventConsoleAPICalled:
 			for _, arg := range e.Args {
-				log.Printf("JS console: %s", arg.Value)
+				logger.Info("JS console: %s", arg.Value)
 			}
 		case *runtime.EventExceptionThrown:
-			log.Printf("JS error: %v", e.ExceptionDetails)
+			logger.Info("JS error: %v", e.ExceptionDetails)
 		}
 	})
 
@@ -68,19 +76,31 @@ func NewChromeParser() (ChromeParserService, error) {
 	return &chromeParserService{
 		ctx:    ctx,
 		cancel: cancelAll,
+		logger: logger,
 	}, nil
 }
 
 // Метод парсинга
-func (svc *chromeParserService) ParsePage(url string) (string, error) {
+func (svc *chromeParserService) DoctorsSchedulePage() (string, error) {
 	var res string
 
-	tasks := chromedp.Tasks{
-		chromedp.Navigate(url),
-		chromedp.Text("body", &res),
+	loadCtx, cancel := context.WithTimeout(svc.ctx, 10*time.Second)
+	defer cancel()
+
+	// Задаем заголовки
+	headers := map[string]interface{}{
+		"Cookie": svc.cfg.Cookie,
 	}
 
-	if err := chromedp.Run(svc.ctx, tasks); err != nil {
+	tasks := chromedp.Tasks{
+		network.Enable(),
+		network.SetExtraHTTPHeaders(network.Headers(headers)),
+
+		chromedp.Navigate("https://k-vrachu.cifromed35.ru/service/hospitals/doctors/12600087?per_page=999999&type=by_unit"),
+		chromedp.InnerHTML(".docsInLpuTable", &res, chromedp.NodeVisible),
+	}
+
+	if err := chromedp.Run(loadCtx, tasks); err != nil {
 		return "", err
 	}
 

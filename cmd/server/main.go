@@ -28,9 +28,9 @@ func main() {
 	log.SetFlags(0) // убираем timestamp, так как logrus добавит свой
 
 	svcConfig := &service.Config{
-		Name:        "VaultExporterService",
-		DisplayName: "Vault Exporter Service",
-		Description: "A tool for exporting data from Vault to KS",
+		Name:        "KVParser",
+		DisplayName: "KVParser Service",
+		Description: "A tool for k-vrachu parsing",
 	}
 
 	prg := &program{logger: logger, cfg: cfg}
@@ -44,7 +44,7 @@ func main() {
 	if len(os.Args) > 1 {
 		err = service.Control(s, os.Args[1])
 		if err != nil {
-			log.Fatal(err)
+			logger.Error("wrong service command: ", err)
 		}
 		return
 	}
@@ -52,8 +52,7 @@ func main() {
 	// Запуск сервиса
 	err = s.Run()
 	if err != nil {
-		log.Fatalf("fatal: %s", err)
-		panic(err)
+		logger.Error("failed run: ", err)
 	}
 
 }
