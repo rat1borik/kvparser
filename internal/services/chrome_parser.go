@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"kvparser/internal/config"
 	"kvparser/internal/logger"
 	"os"
 	"time"
@@ -19,7 +18,6 @@ type ChromeParserService interface {
 }
 
 type chromeParserService struct {
-	cfg    config.ServerConfig
 	ctx    context.Context
 	cancel context.CancelFunc
 	logger logger.Logger
@@ -51,14 +49,16 @@ func NewChromeParser(logger logger.Logger) (ChromeParserService, error) {
 	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(logFn))
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		switch e := ev.(type) {
-		case *runtime.EventConsoleAPICalled:
-			for _, arg := range e.Args {
-				logger.Info("JS console: %s", arg.Value)
+		go func(ev interface{}) {
+			switch e := ev.(type) {
+			case *runtime.EventConsoleAPICalled:
+				for _, arg := range e.Args {
+					logger.Info("JS console: %s", arg.Value)
+				}
+			case *runtime.EventExceptionThrown:
+				logger.Info("JS error: %v", e.ExceptionDetails)
 			}
-		case *runtime.EventExceptionThrown:
-			logger.Info("JS error: %v", e.ExceptionDetails)
-		}
+		}(ev)
 	})
 
 	cancelAll := func() {
@@ -87,16 +87,12 @@ func (svc *chromeParserService) DoctorsSchedulePage() (string, error) {
 	loadCtx, cancel := context.WithTimeout(svc.ctx, 10*time.Second)
 	defer cancel()
 
-	// Задаем заголовки
-	headers := map[string]interface{}{
-		"Cookie": svc.cfg.Cookie,
-	}
+	targetUrl := "https://k-vrachu.cifromed35.ru/service/hospitals/doctors/12600087?per_page=999999&type=by_unit"
 
 	tasks := chromedp.Tasks{
 		network.Enable(),
-		network.SetExtraHTTPHeaders(network.Headers(headers)),
-
-		chromedp.Navigate("https://k-vrachu.cifromed35.ru/service/hospitals/doctors/12600087?per_page=999999&type=by_unit"),
+		network.SetCacheDisabled(true),
+		chromedp.Navigate(targetUrl),
 		chromedp.InnerHTML(".docsInLpuTable", &res, chromedp.NodeVisible),
 	}
 

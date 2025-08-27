@@ -1,21 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"kvparser/internal/config"
-	"kvparser/internal/domain"
+	"kvparser/internal/jobs"
 	"kvparser/internal/logger"
 	"kvparser/internal/services"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
 
 	svc "github.com/kardianos/service"
 )
 
 type program struct {
-	logger logger.Logger
-	cfg    *config.ServerConfig
-	parser services.ChromeParserService
+	logger    logger.Logger
+	cfg       *config.ServerConfig
+	parser    services.ChromeParserService
+	scheduler *gocron.Scheduler
 }
 
 func (p *program) Start(s svc.Service) error {
@@ -30,27 +32,26 @@ func (p *program) Start(s svc.Service) error {
 		return err
 	}
 
+	sched := gocron.NewScheduler(time.UTC)
+	if err := jobs.RegisterFetchSlotsJob(sched, "*/5 * * * *", p.logger, svc); err != nil {
+		return err
+	}
+
 	p.parser = svc
+	p.scheduler = sched
 
-	res, err := svc.DoctorsSchedulePage()
-	if err != nil {
-		return err
-	}
-
-	parsed, err := domain.FindMatches(res, domain.DoctorOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, val := range parsed.Matches {
-		fmt.Printf("%s %s %s %s\n", val.Name, val.Speciality, val.Status, val.Subdivision)
-	}
+	go sched.StartBlocking()
 
 	return nil
 }
 
 func (p *program) Stop(s svc.Service) error {
 	p.logger.Info("Stopping service...")
+
+	if p.scheduler != nil {
+		p.scheduler.Stop()
+	}
+
 	if p.parser != nil {
 		p.parser.Close()
 	}
