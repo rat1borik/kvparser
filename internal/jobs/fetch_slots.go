@@ -4,13 +4,14 @@ package jobs
 import (
 	"fmt"
 	"kvparser/internal/domain"
+	"kvparser/internal/infrastructure"
 	"kvparser/internal/logger"
 	"kvparser/internal/services"
 
 	"github.com/go-co-op/gocron"
 )
 
-func RegisterFetchSlotsJob(s *gocron.Scheduler, cronVal string, logger logger.Logger, cp services.ChromeParserService) error {
+func RegisterFetchSlotsJob(s *gocron.Scheduler, cronVal string, logger logger.Logger, cp services.ChromeParserService, do domain.DoctorOptions, tg infrastructure.Bot) error {
 
 	_, err := s.Cron("*/5 * * * *").StartImmediately().Do(func() {
 		page, err := cp.DoctorsSchedulePage()
@@ -19,13 +20,14 @@ func RegisterFetchSlotsJob(s *gocron.Scheduler, cronVal string, logger logger.Lo
 			return
 		}
 
-		processed, err := domain.FindMatches(page, domain.DoctorOptions{})
+		processed, err := domain.FindMatches(page, do)
 		if err != nil {
 			logger.Error("can't  process page:", err)
 			return
 		}
 
 		for _, val := range processed.Matches {
+			tg.SendMessage(fmt.Sprintf("%s %s %s %s\n", val.Name, val.Speciality, val.Status, val.Subdivision))
 			fmt.Printf("%s %s %s %s\n", val.Name, val.Speciality, val.Status, val.Subdivision)
 		}
 	})

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"kvparser/internal/config"
+	"kvparser/internal/domain"
+	"kvparser/internal/infrastructure"
 	"kvparser/internal/jobs"
 	"kvparser/internal/logger"
 	"kvparser/internal/services"
@@ -32,8 +35,17 @@ func (p *program) Start(s svc.Service) error {
 		return err
 	}
 
+	tg, err := infrastructure.NewTgBot(p.cfg.TgToken, p.cfg.TgChatId)
+	if err != nil {
+		return fmt.Errorf("can't create bot api: %w", err)
+	}
+
 	sched := gocron.NewScheduler(time.UTC)
-	if err := jobs.RegisterFetchSlotsJob(sched, "*/5 * * * *", p.logger, svc); err != nil {
+	if err := jobs.RegisterFetchSlotsJob(sched, "*/5 * * * *", p.logger, svc, domain.DoctorOptions{
+		Subdivision:  p.cfg.FilterOptions.Subdivision,
+		Specialists:  p.cfg.FilterOptions.Specialists,
+		Specialities: p.cfg.FilterOptions.Specialities,
+	}, tg); err != nil {
 		return err
 	}
 

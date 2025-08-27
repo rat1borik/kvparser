@@ -10,8 +10,14 @@ import (
 )
 
 type ServerConfig struct {
-	Cookie  string `yaml:"cookie"`
-	LogPath string `yaml:"log_path"`
+	TgToken       string `yaml:"tg_token"`
+	TgChatId      int64  `yaml:"tg_chat_id"`
+	LogPath       string `yaml:"log_path"`
+	FilterOptions struct {
+		Subdivision  string   `yaml:"subdivision"`
+		Specialists  []string `yaml:"specialists"`
+		Specialities []string `yaml:"specialities"`
+	} `yaml:"filter_options"`
 	// Берется из env
 	IsProduction bool
 }

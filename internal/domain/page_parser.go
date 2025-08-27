@@ -46,7 +46,7 @@ func FindMatches(html string, options DoctorOptions) (*MatchResult, error) {
 			}
 
 			// Фильтрация
-			if el.Status != "" && !utils.IsEmptyOrWhitespace(el.Status) &&
+			if el.Status != "" && el.Status != "Запись через интернет недоступна" && !utils.IsEmptyOrWhitespace(el.Status) &&
 				(len(options.Specialists) == 0 || slices.Contains(options.Specialists, el.Name)) &&
 				(len(options.Specialities) == 0 || slices.Contains(options.Specialities, el.Speciality)) &&
 				(options.Subdivision == "" || options.Subdivision == el.Subdivision) {
